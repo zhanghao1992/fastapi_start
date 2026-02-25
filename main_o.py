@@ -4,7 +4,8 @@
 @Project ：fastapi_start 
 @File    ：main.py
 @Author  ：zhanghao
-@Date    ：2026/2/25 14:52 
+@Date    ：2026/2/25 14:52
+@desc    : 常见请求和错误处理
 '''
 import json
 

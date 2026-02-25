@@ -2,4 +2,6 @@ fastapi
 pymongo
 sqlalchemy
 uvicorn[standard]
-pydantic
+pydantic[email]
+email-validator
+python-multipart
