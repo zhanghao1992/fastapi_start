@@ -8,90 +8,72 @@
 '''
 import json
 
-# import router_example
-from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.exceptions import RequestValidationError
+from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
-from starlette.responses import JSONResponse, PlainTextResponse
+from sqlalchemy.orm import Session
 
-from models import Book
+import models
+from sql_example.database import SessionLocal, User
 
 app = FastAPI()
 
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"message": "Oops! Something went wrong"},
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@app.get("/users")
+async def read_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return users
+
+
+class UserBody(BaseModel):
+    name: str
+    email: str
+
+
+@app.post("/user")
+async def create_user(user: UserBody, db: Session = Depends(get_db)):
+    new_user = User(
+        name=user.name,
+        email=user.email,
     )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
 
-@app.exception_handler(RequestValidationError)
-async def http_exception_handler(request: Request, exc: RequestValidationError):
-    return PlainTextResponse(
-        "This is a plain text response:" f"\n{json.dumps(exc.errors(), indent=2)}",
-        status_code=status.HTTP_400_BAD_REQUEST
-    )
+@app.get("/user")
+async def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
-# app.include_router(router_example.router)
+@app.post("/user/{user_id}")
+async def update_user(user_id: int, user: UserBody, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    db_user.name = user.name
+    db_user.email = user.email
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 
-@app.get("/")
-async def read_root():
-    return {"message": "Hello World"}
-
-
-@app.get("/books/{book_id}")  # http://127.0.0.1:8000/book/11
-async def read_book(book_id: int):
-    return {"book_id": book_id, "title": "The Greate Gatsby", "author": "F.Scott Fitzgerald"}
-
-
-@app.get("/authors/{author_id}")  # http://127.0.0.1:8000/authors/1
-async def read_author(author_id: int):
-    return {
-        "author_id": author_id,
-        "name": "Ernest Hemingway"
-    }
-
-
-@app.get("/books")  # http://127.0.0.1:8000/books?year=2025
-async def read_books(year: int = None):
-    if year:
-        return {
-            "year": year,
-            "books": ["Book 1", "Book 2"]
-        }
-    return {"books": ["All Books"]}
-
-
-class BookResponse(BaseModel):
-    title: str
-    author: str
-
-
-@app.get("/allbooks", response_model=list[BookResponse])
-async def read_all():
-    return [
-        {
-            "id": 1,
-            "title": "1984",
-            "author": "George Orwell",
-        },
-        {
-            "id": 1,
-            "title": "The Great Gatsby",
-            "author": "F. Scott Fitzgerald",
-        }
-    ]
-
-
-@app.post("/book")
-async def create_book(book: Book):
-    return book
-
-
-@app.get("/error_endpoint")
-async def error_endpoint():
-    raise HTTPException(status_code=400, detail="Oops!")
+@app.delete("/user")
+async def delete_user(user_id: int, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(db_user)
+    db.commit()
+    return {"message": "User deleted"}
