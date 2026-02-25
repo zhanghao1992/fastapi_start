@@ -34,6 +34,6 @@ async def create_user(user: User):
     result = users_collection.insert_one(user.model_dump(exclude_none=True))
     user_response = UserResponse(
         id=str(result.inserted_id),
-        *user.model_dump()
+        **user.model_dump()
     )
     return user_response
