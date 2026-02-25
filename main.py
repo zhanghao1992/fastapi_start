@@ -6,12 +6,16 @@
 @Author  ：zhanghao
 @Date    ：2026/2/25 14:52 
 '''
-import router_example
+# import router_example
 from fastapi import FastAPI
+from pydantic import BaseModel
+
+from models import Book
 
 app = FastAPI()
 
-app.include_router(router_example.router)
+
+# app.include_router(router_example.router)
 
 
 @app.get("/")
@@ -40,3 +44,28 @@ async def read_books(year: int = None):
             "books": ["Book 1", "Book 2"]
         }
     return {"books": ["All Books"]}
+
+
+class BookResponse(BaseModel):
+    title: str
+    author: str
+
+
+@app.get("/allbooks", response_model=list[BookResponse])
+async def read_all():
+    return [
+        {
+            "id": 1,
+            "title": "1984",
+            "author": "George Orwell",
+        },
+        {
+            "id": 1,
+            "title": "The Great Gatsby",
+            "author": "F. Scott Fitzgerald",
+        }
+    ]
+
+    @app.post("/book")
+    async def create_book(book: Book):
+        return book
