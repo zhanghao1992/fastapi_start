@@ -6,13 +6,33 @@
 @Author  ：zhanghao
 @Date    ：2026/2/25 14:52 
 '''
+import json
+
 # import router_example
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
+from starlette.responses import JSONResponse, PlainTextResponse
 
 from models import Book
 
 app = FastAPI()
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": "Oops! Something went wrong"},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def http_exception_handler(request: Request, exc: RequestValidationError):
+    return PlainTextResponse(
+        "This is a plain text response:" f"\n{json.dumps(exc.errors(), indent=2)}",
+        status_code=status.HTTP_400_BAD_REQUEST
+    )
 
 
 # app.include_router(router_example.router)
@@ -66,6 +86,12 @@ async def read_all():
         }
     ]
 
-    @app.post("/book")
-    async def create_book(book: Book):
-        return book
+
+@app.post("/book")
+async def create_book(book: Book):
+    return book
+
+
+@app.get("/error_endpoint")
+async def error_endpoint():
+    raise HTTPException(status_code=400, detail="Oops!")
