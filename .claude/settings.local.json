@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python:*)",
       "Bash(ls:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(pip install:*)"
     ]
   }
 }
